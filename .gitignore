@@ -1,0 +1,16 @@
+# 运行时产物
+config.json
+state.json
+history.json
+server.pid
+bridge.log
+bridge.log.*
+
+# 调试用的事件样本
+*.ndjson
+
+# 依赖与工具
+node_modules/
+.DS_Store
+Thumbs.db
+*.swp

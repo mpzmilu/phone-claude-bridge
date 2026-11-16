@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14161a">
+<title>手机 Claude</title>
+<style>
+:root{--bg:#14161a;--fg:#e8eaed;--muted:#8b93a1;--card:#1d2026;--accent:#c96442;--border:#2a2f38}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;display:flex;flex-direction:column;height:100dvh}
+header{display:flex;align-items:center;gap:8px;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top));border-bottom:1px solid var(--border);background:var(--bg);z-index:2}
+.dot{width:8px;height:8px;border-radius:50%;background:#666;flex:none}
+.dot.on{background:#3ecf8e}
+.title{font-weight:600}
+.spacer{flex:1}
+header button{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:13px}
+#log{flex:1;overflow-y:auto;padding:14px 12px 8px;display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch}
+.msg{max-width:92%;padding:10px 12px;border-radius:12px;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}
+.msg.user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+.msg.bot{align-self:flex-start;background:var(--card);border:1px solid var(--border);border-bottom-left-radius:4px}
+.msg.meta{align-self:center;background:none;color:var(--muted);font-size:12px;padding:2px}
+.blink::after{content:"▍";animation:b 1s steps(2) infinite}
+@keyframes b{50%{opacity:0}}
+form{display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--border);background:var(--bg)}
+textarea{flex:1;resize:none;background:var(--card);color:var(--fg);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font:inherit;max-height:140px;outline:none}
+textarea:focus{border-color:#3d4553}
+form button{background:var(--accent);color:#fff;border:0;border-radius:12px;padding:0 18px;font:inherit;font-weight:600}
+form button:disabled{opacity:.45}
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="dot"></span>
+  <span class="title">Claude</span>
+  <span class="spacer"></span>
+  <button id="reset">新会话</button>
+</header>
+<main id="log"></main>
+<form id="form">
+  <textarea id="q" rows="1" placeholder="问点什么…" autocomplete="off"></textarea>
+  <button id="send">发送</button>
+</form>
+<script>
+const logEl = document.getElementById('log');
+const form = document.getElementById('form');
+const ta = document.getElementById('q');
+const btn = document.getElementById('send');
+const dot = document.getElementById('dot');
+
+const qs = new URLSearchParams(location.search);
+if (qs.get('t')) localStorage.setItem('pcb_token', qs.get('t'));
+const token = localStorage.getItem('pcb_token') || '';
+
+const api = (p, opt = {}) => fetch(p, {
+  ...opt,
+  headers: { 'content-type': 'application/json', 'x-token': token, ...(opt.headers || {}) }
+});
+
+function bubble(role, text) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  d.textContent = text;
+  logEl.appendChild(d);
+  logEl.scrollTop = logEl.scrollHeight;
+  return d;
+}
+
+async function refresh() {
+  try {
+    const r = await api('/api/state');
+    if (!r.ok) { dot.className = 'dot'; return; }
+    const s = await r.json();
+    dot.className = 'dot on';
+    logEl.innerHTML = '';
+    if (!s.history.length) bubble('meta', '连接正常，可以开始提问');
+    for (const m of s.history) bubble(m.role === 'user' ? 'user' : (m.source === 'system' ? 'meta' : 'bot'), m.text);
+    logEl.scrollTop = logEl.scrollHeight;
+  } catch (e) { dot.className = 'dot'; }
+}
+refresh();
+setInterval(() => { if (document.hidden) return; api('/api/ping').then(r => { dot.className = r.ok ? 'dot on' : 'dot'; }).catch(() => { dot.className = 'dot'; }); }, 20000);
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const q = ta.value.trim();
+  if (!q) return;
+  ta.value = '';
+  ta.style.height = 'auto';
+  bubble('user', q);
+  const wait = bubble('bot', '');
+  wait.innerHTML = '<span class="blink">思考中</span>';
+  btn.disabled = true;
+  try {
+    const r = await api('/api/ask', { method: 'POST', body: JSON.stringify({ q }) });
+    const s = await r.json();
+    wait.textContent = s.answer || (s.error === 'token' ? '令牌不对，请在网址后面加 ?t=令牌' : '没有返回');
+  } catch (err) {
+    wait.textContent = '请求失败：' + err.message;
+  } finally {
+    btn.disabled = false;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+});
+
+ta.addEventListener('input', () => {
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
+});
+ta.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); }
+});
+
+document.getElementById('reset').onclick = async () => {
+  if (!confirm('开始新会话？当前上下文会清空。')) return;
+  await api('/api/reset', { method: 'POST' });
+  logEl.innerHTML = '';
+  bubble('meta', '已开始新会话');
+};
+</script>
+</body>
+</html>

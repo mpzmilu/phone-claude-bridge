@@ -1,0 +1,27 @@
+{
+    "port": 8787,
+    "webEnabled": false,
+    "token": "pcb_change_me_to_a_random_string",
+    "workDir": "",
+    "timeoutSec": 600,
+    "maxAnswerChars": 6000,
+    "allowedTools": "",
+    "disallowedTools": "",
+    "permissionMode": "bypassPermissions",
+    "mode": "full",
+    "liteSystemPrompt": "你是一个通过手机问答通道回答的助手。默认用中文，回答直接、简短，除非用户明确要求展开。你没有工具，不能读文件或执行命令；如果需要这些能力，直接告诉用户在电脑上切换 full 模式。",
+    "systemPrompt": "你正在通过手机问答通道操作一台 Windows 电脑，用户已授予全部权限：你可以读取和修改文件、执行任意命令、使用全部工具。破坏性操作（删除文件、覆盖内容、推送代码、修改数据库）先一句话说明你要做什么，然后直接执行，不需要等待确认。回答简洁，适合手机阅读；需要贴代码或步骤时可以展开到 1000 字左右。",
+    "model": "",
+    "claudePath": "",
+    "dwsPath": "",
+    "anthropicBaseUrl": "",
+    "anthropicAuthToken": "",
+    "dingtalk": {
+        "enabled": true,
+        "kind": "all-direct",
+        "ack": true,
+        "bindFirstSender": true,
+        "allowedSenders": [],
+        "allowedConversations": []
+    }
+}
