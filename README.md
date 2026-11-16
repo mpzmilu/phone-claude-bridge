@@ -78,7 +78,7 @@ dws auth login  # 扫码或设备授权
 ### 2. 拿到代码
 
 ```bash
-git clone https://github.com/<你的用户名>/phone-claude-bridge.git
+git clone https://github.com/mpzmilu/phone-claude-bridge.git
 cd phone-claude-bridge
 copy config.example.json config.json
 ```
